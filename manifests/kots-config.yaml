@@ -1,0 +1,16 @@
+---
+apiVersion: kots.io/v1beta1
+kind: Config
+metadata:
+  name: cron-support-bundle-config
+spec:
+  groups:
+  - name: usage_info
+    title: Usage Info
+    description: Usage info
+    items:
+    - name: usage_info_enabled
+      title: Collect usage info
+      type: bool
+      default: "1"
+      recommended: true

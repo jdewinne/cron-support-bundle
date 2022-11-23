@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  annotations:
+    "kots.io/exclude": '{{repl ConfigOptionEquals "usage_info_enabled" "0" }}'
+  name: cron-support-bundle
+spec:
+  schedule: '{{repl LicenseFieldValue "cron_support_bundle_schedule" }}'
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: kotsadm
+          automountServiceAccountToken: true
+          initContainers:
+          - name: create-support-bundle
+            image: replicated/troubleshoot:0.48.0
+            imagePullPolicy: IfNotPresent
+            command:
+            - /troubleshoot/support-bundle
+            - --interactive=false
+            - --output=/data/supportbundle.tar.gz
+            - secret/{{repl Namespace}}/support-bundle-secret
+            volumeMounts:
+            - name: data-dir
+              mountPath: "/data"
+          containers:
+          - name: send-support-bundle
+            image: curlimages/curl:7.86.0
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: ENDPOINT
+              value: '{{repl LicenseFieldValue "cron_support_bundle_url" }}'
+            command: ["/bin/sh"]
+            args: ["-c","curl --request PUT --upload-file /data/supportbundle.tar.gz ${ENDPOINT}/$(sha256sum /data/supportbundle.tar.gz | awk '{print $1} ').tar.gz"]
+            volumeMounts:
+            - name: data-dir
+              mountPath: "/data"
+          volumes:
+          - name: data-dir
+            emptyDir: {}
+          restartPolicy: OnFailure
